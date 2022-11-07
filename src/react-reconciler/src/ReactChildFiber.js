@@ -55,7 +55,7 @@ function createChildReconciler(shouldTrackSideEffects) {
    */
   function placeSingleChild(newFiber) {
     if (shouldTrackSideEffects) {
-      newFiber.flages |= Placement;
+      newFiber.flags |= Placement;
     }
 
     return newFiber;
@@ -71,7 +71,7 @@ function createChildReconciler(shouldTrackSideEffects) {
     if (shouldTrackSideEffects) {
       //如果一个fiber它的flags上有Placement,说明此节点需要创建真实DOM并且插入到父容器中
       //如果父fiber节点是初次挂载，shouldTrackSideEffects=false,不需要添加flags 这种情况下会在完成阶段把所有的子节点全部添加到自己身上
-      newFiber.flages |= Placement;
+      newFiber.flags |= Placement;
     }
   }
 

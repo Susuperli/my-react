@@ -92,14 +92,14 @@ export function completeWork(current, workInProgress) {
  * @param {*} completedWork
  */
 function bubbleProperties(completedWork) {
-  let substreeFlags = NoFlags;
+  let subtreeFlags = NoFlags;
   let child = completedWork.child;
 
   while (child !== null) {
-    substreeFlags |= child.substreeFlags;
-    substreeFlags |= child.flags;
+    subtreeFlags |= child.subtreeFlags;
+    subtreeFlags |= child.flags;
     child = child.sibling;
   }
 
-  completedWork.substreeFlags = substreeFlags;
+  completedWork.subtreeFlags = subtreeFlags;
 }

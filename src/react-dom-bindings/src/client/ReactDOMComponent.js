@@ -11,7 +11,7 @@ function setInitialDOMProperties(tag, domElement, nextProps) {
       const nextProp = nextProps[propKey];
 
       // 添加style属性
-      if (nextProp === STYLE) {
+      if (propKey === STYLE) {
         setValueForStyles(domElement, nextProp);
       } else if (propKey === CHILDREN) {
         // 向文本节点中加入文本
