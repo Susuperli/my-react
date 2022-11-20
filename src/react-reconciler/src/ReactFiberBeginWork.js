@@ -1,8 +1,15 @@
 import logger, { indent } from 'shared/logger';
-import { HostRoot, HostComponent, HostText } from './ReactWorkTags';
+import {
+  HostRoot,
+  HostComponent,
+  HostText,
+  IndeterminateComponent,
+  FunctionComponent,
+} from './ReactWorkTags';
 import { processUpdateQueue } from './ReactFiberClassUpdateQueue';
 import { mountChildFibers, reconcileChildFibers } from './ReactChildFiber';
 import { shouldSetTextContent } from 'react-dom-bindings/src/client/ReactDOMHostConfig';
+import { renderWithHooks } from 'react-reconciler/src/ReactFiberHooks';
 
 /**
  * 根据新的虚拟Dom生成新的fiber链表
@@ -66,6 +73,23 @@ function updateHostComponent(current, workInProgress) {
 }
 
 /**
+ * 挂载组件
+ * @param {*} current 老fiber
+ * @param {*} workInProcess 新fiber
+ * @param {*} Component 组件类型
+ */
+export function mountIndeterminateComponent(current, workInProcess, Component) {
+  const props = workInProcess.pendingProps;
+  const value = renderWithHooks(current, workInProcess, Component, props);
+
+  // 这里忽略类组件的情况，有兴趣可以查看具体源码（通过判断value上的render函数）
+  workInProcess.tag = FunctionComponent;
+  reconcileChildren(current, workInProcess, value);
+
+  return workInProcess.child;
+}
+
+/**
  * 目标是根据虚拟dom构建新的fiber链表，其实就是分发函数，通过fiber不同的tag来分发给不同的函数来处理
  * @param {*} current 老fiber
  * @param {*} workInProgress 新fiber
@@ -75,6 +99,13 @@ export function beginWork(current, workInProgress) {
   logger(' '.repeat(indent.number) + 'beginWork', workInProgress);
   indent.number += 2;
   switch (workInProgress.tag) {
+    // 这里引入未决定的概念是因为，react中的组件是分为类组件和函数组件两种的，但是它们本质都是函数，需要进一步的确认。
+    case IndeterminateComponent:
+      return mountIndeterminateComponent(
+        current,
+        workInProgress,
+        workInProgress.type,
+      );
     case HostRoot:
       return updateHostRoot(current, workInProgress);
     case HostComponent:

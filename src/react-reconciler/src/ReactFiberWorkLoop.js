@@ -2,8 +2,9 @@ import { scheduleCallback } from 'scheduler';
 import { createWorkInProgress } from './ReactFiber';
 import { beginWork } from './ReactFiberBeginWork';
 import { completeWork } from './ReactFiberCompleteWork';
-import { NoFlags, MutationMask } from './ReactFiberFlags';
+import { NoFlags, MutationMask, Placement, Update } from './ReactFiberFlags';
 import { commitMutationEffectsOnFiber } from './ReactFiberCommitWork';
+import { HostComponent, HostRoot, HostText } from './ReactWorkTags';
 
 let workInProgress = null; // 当前正在处理的fiber
 
@@ -40,8 +41,8 @@ function performConcurrentWorkOnRoot(root) {
  * @param {*} root
  */
 function commitRoot(root) {
-  console.log(root, '11');
   const { finishedWork } = root;
+  printFinshedWork(finishedWork);
   // 判断子节点和自己身上有没有副作用
   const subtreeHasEffects =
     (finishedWork.subtreeFlags & MutationMask) !== NoFlags;
@@ -118,6 +119,48 @@ function completeUnitOfWork(unitOfWork) {
     completedWork = returnFiber;
     workInProgress = completedWork;
   } while (completedWork !== null);
+}
+
+function printFinshedWork(fiber) {
+  let child = fiber.child;
+  while (child) {
+    printFinshedWork(child);
+    child = child.sibling;
+  }
+
+  if (fiber.flags !== 0) {
+    console.log(
+      getFlags(fiber.flags),
+      getTag(fiber.tag),
+      fiber.type,
+      fiber.memoizedProps,
+    );
+  }
+}
+
+function getFlags(flags) {
+  if (flags === Placement) {
+    return '插入';
+  }
+
+  if (flags === Update) {
+    return '更新';
+  }
+
+  return flags;
+}
+
+function getTag(tag) {
+  switch (tag) {
+    case HostRoot:
+      return 'HostRoot';
+    case HostComponent:
+      return 'HostComponent';
+    case HostText:
+      return 'HostText';
+    default:
+      return tag;
+  }
 }
 
 // workLoop主要是通过beginWork和completeUnitOfWork来分别对fiber树进行深度和广度的遍历

@@ -1,5 +1,10 @@
 import { MutationMask, Placement } from './ReactFiberFlags';
-import { HostComponent, HostRoot, HostText } from './ReactWorkTags';
+import {
+  FunctionComponent,
+  HostComponent,
+  HostRoot,
+  HostText,
+} from './ReactWorkTags';
 import {
   insertBefore,
   appendChild,
@@ -59,6 +64,19 @@ function insertOrAppendPlacementNode(node, before, parent) {
     } else {
       appendChild(parent, stateNode);
     }
+  } else {
+    // 如果node不是真实DOM节点，获取它的大儿子
+    const { child } = node;
+
+    if (child !== null) {
+      // 把大儿子添加到父节点DOM中
+      insertOrAppendPlacementNode(child, before, parent);
+      let { sibling } = child;
+      while (sibling !== null) {
+        insertOrAppendPlacementNode(sibling, before, parent);
+        sibling = sibling.sibling;
+      }
+    }
   }
 }
 
@@ -98,6 +116,7 @@ function commitPlacement(finishedWork) {
  */
 export function commitMutationEffectsOnFiber(finishedWork, root) {
   switch (finishedWork.tag) {
+    case FunctionComponent:
     case HostRoot:
     case HostComponent:
     case HostText: {
