@@ -71,6 +71,7 @@ function insertOrAppendPlacementNode(node, before, parent) {
     if (child !== null) {
       // 把大儿子添加到父节点DOM中
       insertOrAppendPlacementNode(child, before, parent);
+
       let { sibling } = child;
       while (sibling !== null) {
         insertOrAppendPlacementNode(sibling, before, parent);
