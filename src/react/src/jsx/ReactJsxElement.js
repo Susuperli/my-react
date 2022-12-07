@@ -28,7 +28,6 @@ function ReactElement(type, key, ref, props) {
 }
 
 export function jsxDEV(type, config) {
-  // debugger;
   let propName; // 属性名
   const props = {}; // 属性对象
   let key = null; // 每个虚拟dom都有一个可选的key值，用来区分同一父节点下的子节点

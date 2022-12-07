@@ -96,7 +96,6 @@ export function mountIndeterminateComponent(current, workInProcess, Component) {
  * @returns 子节点fiber
  */
 export function beginWork(current, workInProgress) {
-  logger(' '.repeat(indent.number) + 'beginWork', workInProgress);
   indent.number += 2;
   switch (workInProgress.tag) {
     // 这里引入未决定的概念是因为，react中的组件是分为类组件和函数组件两种的，但是它们本质都是函数，需要进一步的确认。

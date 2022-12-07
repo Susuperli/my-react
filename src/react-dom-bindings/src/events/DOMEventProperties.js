@@ -73,8 +73,11 @@ import { registerTwoPhaseEvent } from './EventRegistry';
 
 // 源码里面有一堆，这里就以这两个为例子
 const simpleEventPluginEvent = ['click', 'scroll'];
+// reactName 和 nativeName的映射
+export const topLevelEventsToReactNames = new Map();
 
 function registerSimpleEvent(domEventName, reactName) {
+  topLevelEventsToReactNames.set(domEventName, reactName);
   registerTwoPhaseEvent(reactName, [domEventName]);
 }
 
