@@ -59,8 +59,6 @@ function extractEvents(
       event, // 合成事件实例
       listeners, // 监听函数数组
     });
-
-    console.log(dispatchQueue, 'dispatchQueue');
   }
 }
 
