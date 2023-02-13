@@ -20,12 +20,15 @@ function mountReducer(reducer, initialArg) {
   hook.memoizedState = initialArg;
   const queue = {
     pending: null,
+    dispatch: null,
   };
-  const dispatch = dispatchReducerAction.bind(
+  hook.queue = queue;
+
+  const dispatch = (queue.dispatch = dispatchReducerAction.bind(
     null,
     currentlyRenderingFiber,
     queue,
-  );
+  ));
 
   return [hook.memoizedState, dispatch];
 }
@@ -95,6 +98,7 @@ function dispatchReducerAction(fiber, queue, action) {
     action, // {type: 'add', payload: 2} 派发的动作
     next: null, // 指向下一个更新对象或者第一更新对象
   };
+
   // 把当前的最新的更新添加到更新队列中，并且返回当前的根fiber
   const root = enqueueConcurrentHookUpdate(fiber, queue, update);
   scheduleUpdateOnFiber(root);

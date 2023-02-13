@@ -28,6 +28,10 @@ export function precacheFiberNode(hostInst, node) {
 export function updateFiberNode(node, props) {
   node[internalPropsKey] = props;
 }
+
+export function updateFiberProps(node, props) {
+  node[internalPropsKey] = props;
+}
 export function getFiberCurrentPropsFromNode(node) {
   return node[internalPropsKey] || null;
 }

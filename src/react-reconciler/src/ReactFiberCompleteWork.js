@@ -1,12 +1,17 @@
-import logger, { indent } from 'shared/logger';
-import { HostComponent, HostRoot, HostText } from './ReactWorkTags';
+import {
+  FunctionComponent,
+  HostComponent,
+  HostRoot,
+  HostText,
+} from './ReactWorkTags';
 import {
   createTextInstance,
   createInstance,
   appendInitialChild,
   finalizeInitialChildren,
+  prepareUpdate,
 } from 'react-dom-bindings/src/client/ReactDOMHostConfig';
-import { NoFlags } from './ReactFiberFlags';
+import { NoFlags, Update } from './ReactFiberFlags';
 
 /**
  * 把当前完成的fiber的所有子节点对应的真实dom都挂载到自己父parent真实dom上面
@@ -46,6 +51,30 @@ function appendAllChildren(parent, workInProcess) {
   }
 }
 
+function markUpdate(workInProcess) {
+  workInProcess.flags |= Update; // 给当前的fiber添加新的副作用
+}
+/**
+ * 在fiber的完成阶段准备更新DOM
+ * @param {*} current 老fiber
+ * @param {*} workInProcess 新fiber
+ * @param {*} type 类型
+ * @param {*} newProps 新属性
+ */
+function updateHostComponent(current, workInProcess, type, newProps) {
+  const oldProps = current.memoizedProps; // 老的属性
+  const instance = workInProcess.stateNode; // 老的DOM节点
+  // 比较新老属性，收集属性的差异
+  const updatePayload = prepareUpdate(instance, type, oldProps, newProps);
+  // 让原生组件的新fiber更新队列等于[]
+  workInProcess.updateQueue = updatePayload;
+  console.log(updatePayload, 'updatePayload');
+
+  if (updatePayload) {
+    markUpdate(workInProcess);
+  }
+}
+
 /**
  * 完成一个节点，这里需要做的就是根据fiber创建真实dom节点，冒泡节点属性
  * @param {*} current
@@ -61,13 +90,22 @@ export function completeWork(current, workInProgress) {
       // 如果是原生节点
       // 创建真实的dom节点
       const { type } = workInProgress;
-      const instance = createInstance(type, newProps, workInProgress);
-      // 把所有儿子都添加在自己身上
-      appendAllChildren(instance, workInProgress);
-      workInProgress.stateNode = instance;
-      // 挂载初始属性
-      finalizeInitialChildren(instance, type, newProps);
+      // 如果老fiber存在，并且老fiber上存在真实DOM节点，要走节点更新的逻辑
+      if (current !== null && workInProgress.stateNode !== null) {
+        updateHostComponent(current, workInProgress, type, newProps);
+      } else {
+        const instance = createInstance(type, newProps, workInProgress);
+        // 把所有儿子都添加在自己身上
+        appendAllChildren(instance, workInProgress);
+        workInProgress.stateNode = instance;
+        // 挂载初始属性
+        finalizeInitialChildren(instance, type, newProps);
+      }
+
       // 冒泡属性
+      bubbleProperties(workInProgress);
+      break;
+    case FunctionComponent:
       bubbleProperties(workInProgress);
       break;
     case HostText:

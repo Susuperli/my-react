@@ -1,5 +1,9 @@
 import { REACT_ELEMENT_TYPE } from 'shared/ReactSymbols';
-import { createFiberFromElement, createFiberFromText } from './ReactFiber';
+import {
+  createFiberFromElement,
+  createFiberFromText,
+  createWorkInProgress,
+} from './ReactFiber';
 import { Placement } from './ReactFiberFlags';
 import isArray from 'shared/isArray';
 
@@ -8,8 +12,42 @@ import isArray from 'shared/isArray';
  * @param {*} shouldTrackSideEffects 是否跟踪副作用
  */
 function createChildReconciler(shouldTrackSideEffects) {
-  function reconcileSingleElement(returnFiber, currentFirstFiber, element) {
-    // 因为我们现实的初次挂载，老节点currentFirstFiber肯定是没有的，所以可以直接根据虚拟DOM 这里也会有dom-diff
+  /**
+   * 创建一个新的fiber，这个fiber可以复用之前的alternate
+   * @param {*} fiber
+   * @param {*} pendingProps
+   * @returns
+   */
+  function useFiber(fiber, pendingProps) {
+    const clone = createWorkInProgress(fiber, pendingProps);
+    clone.index = 0;
+    clone.sibling = null;
+    return clone;
+  }
+  /**
+   *
+   * @param {*} returnFiber 父fiber div#root对应的fiber
+   * @param {*} currentFiberChild 老的FunctionComponent对应的fiber
+   * @param {*} element 新的虚拟DOM对象
+   * @returns 返回第一个子fiber
+   */
+  function reconcileSingleElement(returnFiber, currentFiberChild, element) {
+    // 新的虚拟DOM的key，也就是唯一标识
+    const key = element.key; // 没写就是null
+    let child = currentFiberChild; // 老的FunctionComponent对应的fiber
+    while (child !== null) {
+      // 判断此老fiber对应的key和新的虚拟DOM对象的key是否一样 null === null
+      if (child.key === key) {
+        // 判断此老fiber对应的类型和新的虚拟DOM元素对应的类型是否相同
+        if (child.type === element.type) {
+          // 如果key一样，类型也一样，则认为此节点可以复用
+          const existing = useFiber(child, element.props);
+          existing.return = returnFiber;
+          return existing;
+        }
+      }
+    }
+    // 因为我们现实的初次挂载，老节点currentFiberChild肯定是没有的，所以可以直接根据虚拟DOM 这里也会有dom-diff
     const created = createFiberFromElement(element);
     created.return = returnFiber;
 
@@ -54,7 +92,7 @@ function createChildReconciler(shouldTrackSideEffects) {
    * @param {*} newFiber 新创建的fiber
    */
   function placeSingleChild(newFiber) {
-    if (shouldTrackSideEffects) {
+    if (shouldTrackSideEffects && newFiber.alternate === null) {
       newFiber.flags |= Placement;
     }
 
@@ -75,7 +113,7 @@ function createChildReconciler(shouldTrackSideEffects) {
     }
   }
 
-  function reconcileChildrenArray(returnFiber, currentFirstFiber, newChildren) {
+  function reconcileChildrenArray(returnFiber, currentFiberChild, newChildren) {
     let resultingFirstChild = null; // 返回的第一个儿子
     let previousNewFiber = null; // 上一个的一个新fiber
     let newIdx = 0; // 给新创建fiber拍一个序
@@ -108,16 +146,16 @@ function createChildReconciler(shouldTrackSideEffects) {
   /**
    * 比较子fiber dom-diff就是用老的子fiber链表和新的虚拟dom进行比较的过程，这里的究极目的就是两个，dom-diff和创建fiber
    * @param {*} returnFiber 新的父fiber，这里知识保证return的指向
-   * @param {*} currentFirstFiber 老fiber的第一个子fiber，用来和新的虚拟dom进行比较
+   * @param {*} currentFiberChild 老fiber的第一个子fiber，用来和新的虚拟dom进行比较
    * @param {*} newChild 新的子虚拟dom，这里可能是一个单节点（对象），多节点（数组）
    */
-  function reconcileChildFibers(returnFiber, currentFirstFiber, newChild) {
+  function reconcileChildFibers(returnFiber, currentFiberChild, newChild) {
     // 现在暂时值考虑新节点只有一个的情况
     if (typeof newChild === 'object' && newChild !== null) {
       switch (newChild.$$typeof) {
         case REACT_ELEMENT_TYPE:
           return placeSingleChild(
-            reconcileSingleElement(returnFiber, currentFirstFiber, newChild),
+            reconcileSingleElement(returnFiber, currentFiberChild, newChild),
           );
         default:
           break;
@@ -126,7 +164,7 @@ function createChildReconciler(shouldTrackSideEffects) {
 
     // newChild存在多节点情况，此时为一个数组
     if (isArray(newChild)) {
-      return reconcileChildrenArray(returnFiber, currentFirstFiber, newChild);
+      return reconcileChildrenArray(returnFiber, currentFiberChild, newChild);
     }
 
     // 兜底返回null，这里指的是单独的文本节点情况，他们不需要fiber

@@ -50,6 +50,23 @@ function updateHostRoot(current, workInProgress) {
 
   return workInProgress.child; // { tag: 5, type: 'h1'}
 }
+export function updateFunctionComponent(
+  current,
+  workInProcess,
+  Component,
+  nextProps,
+) {
+  const nextChildren = renderWithHooks(
+    current,
+    workInProcess,
+    Component,
+    nextProps,
+  );
+
+  reconcileChildren(current, workInProcess, nextChildren);
+
+  return workInProcess.child;
+}
 
 /**
  * 构建原生的子fiber链表
@@ -105,6 +122,16 @@ export function beginWork(current, workInProgress) {
         workInProgress,
         workInProgress.type,
       );
+    case FunctionComponent: {
+      const Component = workInProgress.type;
+      const nextProps = workInProgress.pendingProps;
+      return updateFunctionComponent(
+        current,
+        workInProgress,
+        Component,
+        nextProps,
+      );
+    }
     case HostRoot:
       return updateHostRoot(current, workInProgress);
     case HostComponent:

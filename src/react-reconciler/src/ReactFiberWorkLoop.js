@@ -88,6 +88,7 @@ function performUnitOfWork(unitOfWork) {
 
   // beginWork的作用其实就是分发函数，通过fiber不同的tag来分发给不同的函数来处理，返回值是下一个要处理的fiber，多数为子fiber，对fiber树进行深度遍历
   const next = beginWork(current, unitOfWork);
+
   // 将要生效的属性就变成了生效的属性
   unitOfWork.memoizedProps = unitOfWork.pendingProps;
 
