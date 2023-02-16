@@ -86,7 +86,6 @@ export function commitUpdate(
   oldProps,
   newProps,
 ) {
-  debugger;
   updateProperties(domElement, updatePayload, type, oldProps, newProps);
   updateFiberProps(domElement, newProps);
 }

@@ -146,7 +146,7 @@ export function commitMutationEffectsOnFiber(finishedWork, root) {
           const type = finishedWork.type;
           const updatePayload = finishedWork.updateQueue;
           finishedWork.updateQueue = null;
-          debugger;
+
           if (updatePayload) {
             commitUpdate(
               instance,

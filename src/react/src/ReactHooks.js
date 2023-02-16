@@ -12,7 +12,13 @@ function resolveDispatcher() {
  * @returns
  */
 export function useReducer(reducer, initialArg) {
-  const dispatch = resolveDispatcher();
+  const dispatcher = resolveDispatcher();
 
-  return dispatch.useReducer(reducer, initialArg);
+  return dispatcher.useReducer(reducer, initialArg);
+}
+
+export function useState(reducer, initialArg) {
+  const dispatcher = resolveDispatcher();
+
+  return dispatcher.useState(reducer, initialArg);
 }

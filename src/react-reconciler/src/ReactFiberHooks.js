@@ -9,11 +9,61 @@ let currentHook = null;
 
 const HooksDispatcherOnMount = {
   useReducer: mountReducer,
+  useState: mountState,
 };
 const HooksDispatcherOnUpdate = {
   useReducer: updateReducer,
+  useState: updateState,
 };
 
+// useState其实就是一个内置了reducer的useReducer
+function baseStateReducer(state, action) {
+  return typeof action === 'function' ? action(state) : action;
+}
+
+function mountState(initialState) {
+  // return mountReducer(baseStateReducer, initialState);
+  const hook = mountWorkInProgressHook();
+  hook.memoizedState = initialState;
+
+  const queue = {
+    pending: null,
+    dispatch: null,
+    lastRenderedReducer: baseStateReducer, // 上一个reducer
+    lastRenderedState: initialState, // 上一个State
+  };
+
+  hook.queue = queue;
+  const dispatch = (queue.dispatch = dispatchSetState.bind(
+    null,
+    currentlyRenderingFiber,
+    queue,
+  ));
+
+  return [hook.memoizedState, dispatch];
+}
+
+function dispatchSetState(fiber, queue, action) {
+  // debugger;
+  const update = {
+    action,
+    hasEagerState: false, // 是否有急切的更新
+    eagerState: null, // 急切的更新状态
+    next: null,
+  };
+  // 当派发动作发生之后，我立刻使用上一次的状态和上一次的reducer计算新状态
+  const { lastRenderedReducer, lastRenderedState } = queue;
+  const eagerState = lastRenderedReducer(lastRenderedState, action);
+  update.hasEagerState = true;
+  update.eagerState = eagerState;
+  if (Object.is(eagerState, lastRenderedState)) {
+    return;
+  }
+
+  // 下面是真正的入队更新，并调度更新逻辑
+  const root = enqueueConcurrentHookUpdate(fiber, queue, update);
+  scheduleUpdateOnFiber(root);
+}
 function mountReducer(reducer, initialArg) {
   const hook = mountWorkInProgressHook();
   // 这里注意甄别memoizedState，函数组件Fiber的memoizedState指向hooks链表，而hook的memoizedState指向状态
@@ -60,6 +110,9 @@ function updateWorkInProgressHook() {
   return workInProgressHook;
 }
 
+function updateState() {
+  return updateReducer(baseStateReducer);
+}
 function updateReducer(reducer) {
   // 获取新的hook
   const hook = updateWorkInProgressHook();
@@ -76,14 +129,19 @@ function updateReducer(reducer) {
     const firstUpdate = pendingQueue.next; // 取出第一更新
     let update = firstUpdate;
     do {
-      const action = update.action;
-      newState = reducer(newState, action);
+      if (update.hasEagerState) {
+        newState = update.eagerState;
+      } else {
+        const action = update.action;
+        newState = reducer(newState, action);
+      }
+
       update = update.next;
     } while (update !== null && update !== firstUpdate);
   }
 
   hook.memoizedState = newState;
-  return [hook.memoizedState, queue.diapatch];
+  return [hook.memoizedState, queue.dispatch];
 }
 
 /**
@@ -146,5 +204,6 @@ export function renderWithHooks(current, workInProgress, Component, props) {
   const children = Component(props);
   currentlyRenderingFiber = null;
   workInProgressHook = null;
+  currentHook = null;
   return children;
 }

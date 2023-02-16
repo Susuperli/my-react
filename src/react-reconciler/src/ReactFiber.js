@@ -62,6 +62,13 @@ export function createHostRootFiber() {
 
 /**
  * 基于老的fiber和新的属性创建新的fiber
+ * 1. current和workInProgress不是一个对象
+ * 2. workInProgress
+ *   2.1 有两种情况，一种是没有，创建一个新的，相互通过alternate指向
+ *   2.2 存在alternate，直接服用老的alternate就可以了
+ * 复用有两层含义
+ * 1. 复用老的fiber对象
+ * 2. 复用老的真实DOM
  * @param {*} current 老fiber
  * @param {*} pendingProps 新属性
  */
