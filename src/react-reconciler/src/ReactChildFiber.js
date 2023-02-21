@@ -59,10 +59,10 @@ function createChildReconciler(shouldTrackSideEffects) {
    * @param {*} element 新的虚拟DOM对象
    * @returns 返回第一个子fiber
    */
-  function reconcileSingleElement(returnFiber, currentFiberChild, element) {
+  function reconcileSingleElement(returnFiber, currentFirstChild, element) {
     // 新的虚拟DOM的key，也就是唯一标识
     const key = element.key; // 没写就是null
-    let child = currentFiberChild; // 老的FunctionComponent对应的fiber
+    let child = currentFirstChild; // 老的FunctionComponent对应的fiber
     while (child !== null) {
       // 判断此老fiber对应的key和新的虚拟DOM对象的key是否一样 null === null
       if (child.key === key) {
@@ -82,8 +82,9 @@ function createChildReconciler(shouldTrackSideEffects) {
         // 如果key不相同那就直接删除
         deleteChild(returnFiber, child);
       }
+      child = child.sibling;
     }
-    // 因为我们现实的初次挂载，老节点currentFiberChild肯定是没有的，所以可以直接根据虚拟DOM 这里也会有dom-diff
+    // 因为我们现实的初次挂载，老节点currentFirstChild肯定是没有的，所以可以直接根据虚拟DOM 这里也会有dom-diff
     const created = createFiberFromElement(element);
     created.return = returnFiber;
 

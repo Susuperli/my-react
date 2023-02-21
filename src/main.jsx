@@ -2,17 +2,25 @@ import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 
 function FunctionComponent() {
-  console.log('FunctionComponent', React);
   const [number, setNumber] = React.useState(0);
-  //如果使用的是useState，调用setNumber的时候传入的是老状态，则不需要更新，
-  return (
-    <button
-      onClick={() => {
-        setNumber((number) => number + 1); //0
-      }}
-    >
-      {number}
-    </button>
+  return number === 0 ? (
+    <ul key="container" onClick={() => setNumber(number + 1)}>
+      <li key="A" id="A">
+        A
+      </li>
+      <li key="B" id="B">
+        B
+      </li>
+      <li key="C" id="C">
+        C
+      </li>
+    </ul>
+  ) : (
+    <ul key="container" onClick={() => setNumber(number + 1)}>
+      <li key="B" id="B2">
+        B2
+      </li>
+    </ul>
   );
 }
 

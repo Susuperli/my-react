@@ -72,10 +72,9 @@ function commitDeletionEffectsOnFiber(
 function recursivelyTraverseDeletionEffects(
   finishedRoot,
   nearestMountedAncestor,
-  deletedFiber,
+  parent,
 ) {
   let child = parent.child;
-
   while (child !== null) {
     commitDeletionEffectsOnFiber(
       finishedRoot,
