@@ -4,7 +4,7 @@ import {
   createFiberFromText,
   createWorkInProgress,
 } from './ReactFiber';
-import { Placement } from './ReactFiberFlags';
+import { ChildDeletion, Placement } from './ReactFiberFlags';
 import isArray from 'shared/isArray';
 
 /**
@@ -24,8 +24,36 @@ function createChildReconciler(shouldTrackSideEffects) {
     clone.sibling = null;
     return clone;
   }
+  function deleteChild(returnFiber, childToDelete) {
+    if (!shouldTrackSideEffects) {
+      return;
+    }
+
+    const deletions = returnFiber.deletions;
+    if (deletions === null) {
+      // 添加删除数组
+      returnFiber.deletions = [childToDelete];
+      // 添加删除flags
+      returnFiber.flags |= ChildDeletion;
+    } else {
+      returnFiber.deletions.push(childToDelete);
+    }
+  }
+  // 删除从currentFirstChild之后的所有fiber节点
+  function deleteRemainingChildren(returnFiber, currentFirstChild) {
+    if (!shouldTrackSideEffects) return;
+
+    let childToDelete = currentFirstChild;
+
+    while (childToDelete !== null) {
+      deleteChild(returnFiber, childToDelete);
+      childToDelete = childToDelete.sibling;
+    }
+
+    return null;
+  }
   /**
-   *
+   * 处理单元素节点
    * @param {*} returnFiber 父fiber div#root对应的fiber
    * @param {*} currentFiberChild 老的FunctionComponent对应的fiber
    * @param {*} element 新的虚拟DOM对象
@@ -40,11 +68,19 @@ function createChildReconciler(shouldTrackSideEffects) {
       if (child.key === key) {
         // 判断此老fiber对应的类型和新的虚拟DOM元素对应的类型是否相同
         if (child.type === element.type) {
+          // 删除剩余的其他子节点
+          deleteRemainingChildren(returnFiber, child.sibling);
           // 如果key一样，类型也一样，则认为此节点可以复用
           const existing = useFiber(child, element.props);
           existing.return = returnFiber;
           return existing;
+        } else {
+          // key相同，但是类型不同 比如 p div，那么这个老fiber是不能被复用的，那就删除
+          deleteRemainingChildren(returnFiber, child);
         }
+      } else {
+        // 如果key不相同那就直接删除
+        deleteChild(returnFiber, child);
       }
     }
     // 因为我们现实的初次挂载，老节点currentFiberChild肯定是没有的，所以可以直接根据虚拟DOM 这里也会有dom-diff

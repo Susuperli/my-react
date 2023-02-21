@@ -38,6 +38,9 @@ export function FiberNode(tag, pendingProps, key) {
   this.subtreeFlags = NoFlags;
   // 替身，轮替 DOM-DIFF时会用到
   this.alternate = null;
+  this.index = 0;
+
+  this.deletions = null; // 子节点是否有需要被删除
 }
 // We use a double buffering pooling technique because we know that we'll only ever need at most two versions of a tree.
 // We pool the "other" unused  node that we're free to reuse.

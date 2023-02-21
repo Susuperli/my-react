@@ -89,3 +89,7 @@ export function commitUpdate(
   updateProperties(domElement, updatePayload, type, oldProps, newProps);
   updateFiberProps(domElement, newProps);
 }
+
+export function removeChild(parentInstance, child) {
+  parentInstance.removeChild(child);
+}
