@@ -9,9 +9,7 @@ const RESERVED_PROPS = {
   __self: true,
   __source: true,
 };
-function hasValidKey(config) {
-  return config.key !== undefined;
-}
+
 function hasValidRef(config) {
   return config.ref !== undefined;
 }
@@ -27,15 +25,17 @@ function ReactElement(type, key, ref, props) {
   };
 }
 
-export function jsxDEV(type, config) {
+// React17之前老版的转换函数中的key 是放在config里的 第三个参数放children
+// React17之后新版的转换函数中的key 是放在第三个参数中的，children是放在config里面
+export function jsxDEV(type, config, maybeKey) {
   let propName; // 属性名
   const props = {}; // 属性对象
   let key = null; // 每个虚拟dom都有一个可选的key值，用来区分同一父节点下的子节点
   let ref = null; // 指向真实dom
 
   // 判断key & ref是否存在
-  if (hasValidKey(config)) {
-    key = config.key;
+  if (typeof maybeKey !== 'undefined') {
+    key = maybeKey;
   }
   if (hasValidRef(config)) {
     ref = config.ref;
