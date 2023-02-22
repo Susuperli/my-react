@@ -141,40 +141,134 @@ function createChildReconciler(shouldTrackSideEffects) {
    * @param {*} newIdx 序号
    */
   function placeChild(newFiber, newIdx) {
+    // 指定新的fiber在新的挂载索引
     newFiber.index = newIdx;
-
-    if (shouldTrackSideEffects) {
-      //如果一个fiber它的flags上有Placement,说明此节点需要创建真实DOM并且插入到父容器中
-      //如果父fiber节点是初次挂载，shouldTrackSideEffects=false,不需要添加flags 这种情况下会在完成阶段把所有的子节点全部添加到自己身上
+    // 如果不需要跟踪副作用
+    if (!shouldTrackSideEffects) {
+      return;
+    }
+    // 获取它的老fiber
+    const current = newFiber.alternate;
+    // 如果有，说明是一更新的节点，存在老的真实dom
+    if (current !== null) {
+      return;
+    } else {
       newFiber.flags |= Placement;
     }
   }
 
-  function reconcileChildrenArray(returnFiber, currentFiberChild, newChildren) {
+  function updateELement(returnFiber, current, element) {
+    const elementType = element.type;
+    if (current !== null) {
+      // 判断是否类型一样，则表示key和type都一样，可以复用老的fiber和真实DOM
+      if (current.type === elementType) {
+        const existing = useFiber(current, element.props);
+        existing.return = returnFiber;
+
+        return existing;
+      }
+    }
+
+    // 根据真实dom创建fiber
+    const created = createFiberFromElement(element);
+    created.return = returnFiber;
+    return created;
+  }
+
+  function updateSlot(returnFiber, oldFiber, newChild) {
+    const key = oldFiber !== null ? oldFiber.key : null;
+    if (newChild !== null && typeof newChild === 'object') {
+      switch (newChild.$$typeof) {
+        case REACT_ELEMENT_TYPE: {
+          // 如果key一样，进入更新元素的逻辑
+          if (newChild.key === key) {
+            return updateELement(returnFiber, oldFiber, newChild);
+          }
+        }
+        default:
+          return null;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 处理多个子节点
+   * @param {*} returnFiber
+   * @param {*} currentFiberChild
+   * @param {*} newChildren
+   * @returns
+   */
+  function reconcileChildrenArray(returnFiber, currentFirstChild, newChildren) {
     let resultingFirstChild = null; // 返回的第一个儿子
-    let previousNewFiber = null; // 上一个的一个新fiber
-    let newIdx = 0; // 给新创建fiber拍一个序
-    for (; newIdx < newChildren.length; newIdx++) {
-      // 创建新fiber
-      const newFiber = createChild(returnFiber, newChildren[newIdx]);
+    let previousNewFiber = null; // 上一个的一个新的子fiber
+    let newIdx = 0; // 用来遍历新的虚拟dom的索引
+    let oldFiber = currentFirstChild; // 第一个老fiber
+    let nextOldFiber = null; // 下一个子fiber
 
-      if (newFiber === null) continue;
+    // 开始第一轮循环 如果老fiber有值，新的虚拟DOM也有值
+    for (; oldFiber !== null && newIdx < newChildren.length; newIdx++) {
+      // 先暂存一下老fiber
+      nextOldFiber = oldFiber.sibling;
+      // 试图更新或者复用老的fiber，这里返回的fiber可能是复用之前的也有可能是根据虚拟DOM创建的
+      const newFiber = updateSlot(returnFiber, oldFiber, newChildren[newIdx]);
 
-      // 添加属性，挂载副作用
+      if (newFiber === null) {
+        break;
+      }
+
+      if (shouldTrackSideEffects) {
+        // 如果有老fiber，但是新的fiber并没有成功复用老fiber和老的真实DOM，那就删除老fiber，在提交阶段会删除真实DOM
+        if (oldFiber && newFiber.alternate === null) {
+          deleteChild(returnFiber, oldFiber);
+        }
+      }
+
+      // 指定新fiber的位置
       placeChild(newFiber, newIdx);
 
-      // 如果previousNewFiber为null，说明是第一个fiber
       if (previousNewFiber === null) {
-        // 我们为什么这么特殊关注是否为第一个儿子？
-        // 事实上这跟fiber的结构有关，在联系父子fiber时，我们的父fiber只关注第一个儿子即child只是指向第一个子fiber，这样的结构有助于我们进行深度优先的遍历。
         resultingFirstChild = newFiber;
       } else {
-        // 否则说明不是第一个儿子，那就把这个newFiber添加在上一个子节点后面
         previousNewFiber.sibling = newFiber;
       }
 
-      //让newFiber成为最后一个或者说上一个子fiber
       previousNewFiber = newFiber;
+      oldFiber = nextOldFiber;
+    }
+
+    // 新的虚拟DOM已经循环完毕 3 => 2
+    if (newIdx === newChildren.length) {
+      // 删除剩下的老fiber
+      deleteRemainingChildren(returnFiber, oldFiber);
+      return resultingFirstChild;
+    }
+
+    if (oldFiber === null) {
+      // 如果老的fiber已经没有了，新的虚拟DOM还有，进入插入新节点的逻辑
+      for (; newIdx < newChildren.length; newIdx++) {
+        // 创建新fiber
+        const newFiber = createChild(returnFiber, newChildren[newIdx]);
+
+        if (newFiber === null) continue;
+
+        // 添加属性，挂载副作用
+        placeChild(newFiber, newIdx);
+
+        // 如果previousNewFiber为null，说明是第一个fiber
+        if (previousNewFiber === null) {
+          // 我们为什么这么特殊关注是否为第一个儿子？
+          // 事实上这跟fiber的结构有关，在联系父子fiber时，我们的父fiber只关注第一个儿子即child只是指向第一个子fiber，这样的结构有助于我们进行深度优先的遍历。
+          resultingFirstChild = newFiber;
+        } else {
+          // 否则说明不是第一个儿子，那就把这个newFiber添加在上一个子节点后面
+          previousNewFiber.sibling = newFiber;
+        }
+
+        //让newFiber成为最后一个或者说上一个子fiber
+        previousNewFiber = newFiber;
+      }
     }
 
     return resultingFirstChild;
