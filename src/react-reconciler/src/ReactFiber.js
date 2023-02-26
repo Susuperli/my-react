@@ -90,6 +90,7 @@ export function createWorkInProgress(current, pendingProps) {
     workInProgress.type = current.type;
     workInProgress.flags = NoFlags;
     workInProgress.subtreeFlags = NoFlags;
+    workInProgress.deletions = null;
   }
   // 复用老的属性
   workInProgress.child = current.child;

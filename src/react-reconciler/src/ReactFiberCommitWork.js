@@ -1,4 +1,4 @@
-import { MutationMask, Placement, Update } from './ReactFiberFlags';
+import { MutationMask, Placement, Update, Passive } from './ReactFiberFlags';
 import {
   FunctionComponent,
   HostComponent,
@@ -11,6 +11,10 @@ import {
   commitUpdate,
   removeChild,
 } from 'react-dom-bindings/src/client/ReactDOMHostConfig';
+import {
+  HasEffect as HookHasEffect,
+  Passive as HookPassive,
+} from './ReactHookEffectTags';
 
 let hostParent = null;
 
@@ -308,4 +312,122 @@ function getHostSibling(fiber) {
  */
 function isHostParent(fiber) {
   return fiber.tag === HostComponent || fiber.tag === HostRoot;
+}
+
+export function commitPassiveUnmountEffects(finishedWork) {
+  commitPassiveUnmountOnFiber(finishedWork);
+}
+function commitPassiveUnmountOnFiber(finishedWork) {
+  const flags = finishedWork.flags;
+  switch (finishedWork.tag) {
+    case HostRoot: {
+      recursivelyTraversePassiveUnmountEffects(finishedWork);
+      break;
+    }
+
+    // 只有函数组件才会有useeffect
+    case FunctionComponent: {
+      recursivelyTraversePassiveUnmountEffects(finishedWork);
+      if (flags & Passive) {
+        // 1024
+        commitHookPassiveUnmountEffects(
+          finishedWork,
+          HookHasEffect | HookPassive,
+        );
+      }
+      break;
+    }
+  }
+}
+
+function recursivelyTraversePassiveUnmountEffects(parentFiber) {
+  if (parentFiber.subtreeFlags & Passive) {
+    let child = parentFiber.child;
+    while (child !== null) {
+      commitPassiveUnmountOnFiber(child);
+      child = child.sibling;
+    }
+  }
+}
+function commitHookPassiveUnmountEffects(finishedWork, hookFlags) {
+  commitHookEffectListUnmount(hookFlags, finishedWork);
+}
+function commitHookEffectListUnmount(flags, finishedWork) {
+  const updateQueue = finishedWork.updateQueue;
+  const lastEffect = updateQueue !== null ? updateQueue.lastEffect : null;
+  if (lastEffect !== null) {
+    // 获取第一个effect
+    const firstEffect = lastEffect.next;
+    let effect = firstEffect;
+
+    do {
+      // 如果此effect类型和传入的相同，都是9 HookHasEffect | Passiveeffect
+      if ((effect.tag & flags) === flags) {
+        const destroy = effect.destroy;
+        if (destroy !== undefined) {
+          destroy();
+        }
+      }
+
+      effect = effect.next;
+    } while (effect !== firstEffect);
+  }
+}
+
+export function commitPassiveMountEffects(root, finishedWork) {
+  commitPassiveMountOnFiber(root, finishedWork);
+}
+function commitPassiveMountOnFiber(finishedRoot, finishedWork) {
+  const flags = finishedWork.flags;
+  switch (finishedWork.tag) {
+    case HostRoot: {
+      recursivelyTraversePassiveMountEffects(finishedRoot, finishedWork);
+      break;
+    }
+
+    // 只有函数组件才会有useeffect
+    case FunctionComponent: {
+      recursivelyTraversePassiveMountEffects(finishedRoot, finishedWork);
+      if (flags & Passive) {
+        // 1024
+        commitHookPassiveMountEffects(
+          finishedWork,
+          HookHasEffect | HookPassive,
+        );
+      }
+      break;
+    }
+  }
+}
+
+function recursivelyTraversePassiveMountEffects(root, parentFiber) {
+  if (parentFiber.subtreeFlags & Passive) {
+    let child = parentFiber.child;
+    while (child !== null) {
+      commitPassiveMountOnFiber(root, child);
+      child = child.sibling;
+    }
+  }
+}
+function commitHookPassiveMountEffects(finishedWork, hookFlags) {
+  commitHookEffectListMount(hookFlags, finishedWork);
+}
+function commitHookEffectListMount(flags, finishedWork) {
+  const updateQueue = finishedWork.updateQueue;
+  const lastEffect = updateQueue !== null ? updateQueue.lastEffect : null;
+  if (lastEffect !== null) {
+    // 获取第一个effect
+    const firstEffect = lastEffect.next;
+    let effect = firstEffect;
+
+    do {
+      // 如果此effect类型和传入的相同，都是9 HookHasEffect | Passiveeffect
+      if ((effect.tag & flags) === flags) {
+        const create = effect.create;
+        effect.destroy = create();
+      }
+
+      effect = effect.next;
+    } while (effect !== firstEffect);
+  }
 }

@@ -22,3 +22,9 @@ export function useState(reducer, initialArg) {
 
   return dispatcher.useState(reducer, initialArg);
 }
+
+export function useEffect(create) {
+  const dispatcher = resolveDispatcher();
+
+  return dispatcher.useEffect(create);
+}

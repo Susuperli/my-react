@@ -8,8 +8,13 @@ import {
   Placement,
   Update,
   ChildDeletion,
+  Passive,
 } from './ReactFiberFlags';
-import { commitMutationEffectsOnFiber } from './ReactFiberCommitWork';
+import {
+  commitMutationEffectsOnFiber, // 执行DOM操作
+  commitPassiveUnmountEffects, // 执行destroy
+  commitPassiveMountEffects, // 执行create
+} from './ReactFiberCommitWork';
 import {
   HostComponent,
   HostRoot,
@@ -20,6 +25,8 @@ import { finishQueueingConcurrentUpdates } from './ReactFiberConcurrentUpdates';
 
 let workInProgress = null; // 当前正在处理的fiber
 let workInProgressRoot = null;
+let rootDoesHavePassiveEffect = false; // 此根节点上有没有useEffect类似的副作用
+let rootWithPendingPassiveEffects = null; // 具有useEffect副作用的根节点FiberRootNode, 根fiber.stateNode
 
 /**
  * 计划更新root
@@ -52,13 +59,36 @@ function performConcurrentWorkOnRoot(root) {
   commitRoot(root);
   workInProgressRoot = null;
 }
+
+function flushPassiveEffect() {
+  if (rootWithPendingPassiveEffects !== null) {
+    const root = rootWithPendingPassiveEffects;
+    // 执行卸载副作用， destroy
+
+    commitPassiveUnmountEffects(root.current);
+    // 执行挂载副作用 create
+
+    commitPassiveMountEffects(root, root.current);
+  }
+}
 /**
  * 提交节点
  * @param {*} root
  */
 function commitRoot(root) {
+  // 先获取新的构建好的fiber树的根fiber tag=3
   const { finishedWork } = root;
-  printFinishedWork(finishedWork);
+
+  if (
+    (finishedWork.subtreeFlags & Passive) !== NoFlags ||
+    (finishedWork.flags & Passive) !== NoFlags
+  ) {
+    if (!rootDoesHavePassiveEffect) {
+      rootDoesHavePassiveEffect = true;
+      scheduleCallback(flushPassiveEffect);
+    }
+  }
+
   console.log('~~~~~~~~~~~~~~~~~~~~~~~');
   // 判断子节点和自己身上有没有副作用
   const subtreeHasEffects =
@@ -66,7 +96,12 @@ function commitRoot(root) {
   const rootHasEffect = (finishedWork.flags & MutationMask) !== NoFlags;
   // 如果自己的副作用或者子节点有副作用就进行DOM操作
   if (subtreeHasEffects || rootHasEffect) {
+    // 当DOM执行变更之后
     commitMutationEffectsOnFiber(finishedWork, root);
+    if (rootDoesHavePassiveEffect) {
+      rootDoesHavePassiveEffect = false;
+      rootWithPendingPassiveEffects = root;
+    }
   }
   // 等DOM变更之后，更改root中current的指向
   root.current = finishedWork;
