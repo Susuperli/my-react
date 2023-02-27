@@ -23,8 +23,14 @@ export function useState(reducer, initialArg) {
   return dispatcher.useState(reducer, initialArg);
 }
 
-export function useEffect(create) {
+export function useEffect(create, deps) {
   const dispatcher = resolveDispatcher();
 
-  return dispatcher.useEffect(create);
+  return dispatcher.useEffect(create, deps);
+}
+
+export function useLayoutEffect(create, deps) {
+  const dispatcher = resolveDispatcher();
+
+  return dispatcher.useLayoutEffect(create, deps);
 }

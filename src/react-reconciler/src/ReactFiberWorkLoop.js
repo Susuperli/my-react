@@ -14,6 +14,7 @@ import {
   commitMutationEffectsOnFiber, // 执行DOM操作
   commitPassiveUnmountEffects, // 执行destroy
   commitPassiveMountEffects, // 执行create
+  commitLayoutEffects,
 } from './ReactFiberCommitWork';
 import {
   HostComponent,
@@ -61,6 +62,7 @@ function performConcurrentWorkOnRoot(root) {
 }
 
 function flushPassiveEffect() {
+  console.log('下一个宏任务中flushPassiveEffect~~~~~~~~~~');
   if (rootWithPendingPassiveEffects !== null) {
     const root = rootWithPendingPassiveEffects;
     // 执行卸载副作用， destroy
@@ -89,7 +91,7 @@ function commitRoot(root) {
     }
   }
 
-  console.log('~~~~~~~~~~~~~~~~~~~~~~~');
+  console.log('开始commit~~~~~~~~~~~~~~~~~~~~~~~');
   // 判断子节点和自己身上有没有副作用
   const subtreeHasEffects =
     (finishedWork.subtreeFlags & MutationMask) !== NoFlags;
@@ -97,7 +99,15 @@ function commitRoot(root) {
   // 如果自己的副作用或者子节点有副作用就进行DOM操作
   if (subtreeHasEffects || rootHasEffect) {
     // 当DOM执行变更之后
+    console.log('DDOM执行变更commitMutationEffectsOnFiber~~~~~~~~~~~~~~');
+
     commitMutationEffectsOnFiber(finishedWork, root);
+
+    // 执行layout Effect
+    console.log(
+      'DOM执行变更后commitLayoutEffects~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
+    );
+    commitLayoutEffects(finishedWork, root);
     if (rootDoesHavePassiveEffect) {
       rootDoesHavePassiveEffect = false;
       rootWithPendingPassiveEffects = root;

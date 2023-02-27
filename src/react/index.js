@@ -3,4 +3,5 @@ export {
   useReducer,
   useState,
   useEffect,
+  useLayoutEffect,
 } from './src/React';
