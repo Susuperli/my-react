@@ -3,19 +3,13 @@ import { createRoot } from 'react-dom/client';
 
 function FunctionComponent() {
   const [number, setNumber] = React.useState(0);
-  let p = new Promise((resolve) => resolve());
-  p.then(() => {
-    console.log('1');
-  });
-  p.then(() => {
-    console.log('2');
-  });
+
   React.useEffect(() => {
     console.log('useEffect1');
     return () => {
       console.log('destroy useEffect1');
     };
-  });
+  }, []);
   React.useLayoutEffect(() => {
     console.log('useLayoutEffect2');
     return () => {
