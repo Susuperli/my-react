@@ -1,4 +1,8 @@
-import { scheduleCallback } from 'scheduler';
+import {
+  scheduleCallback,
+  NormalPriority as NormalSchedulerPriority,
+  shouldYield,
+} from 'scheduler';
 import { createWorkInProgress } from './ReactFiber';
 import { beginWork } from './ReactFiberBeginWork';
 import { completeWork } from './ReactFiberCompleteWork';
@@ -49,7 +53,7 @@ function ensureRootIsScheduled(root) {
  * 根据fiber构建fiber树，要创建真实的DOM节点，还需要把真实DOM节点插入容器
  * @param {*} root
  */
-function performConcurrentWorkOnRoot(root) {
+function performConcurrentWorkOnRoot(root, timeout) {
   // 第一次渲染以同步的方式渲染根节点，初次渲染的时候，都是同步
   renderRootSync(root);
 
@@ -87,7 +91,7 @@ function commitRoot(root) {
   ) {
     if (!rootDoesHavePassiveEffect) {
       rootDoesHavePassiveEffect = true;
-      scheduleCallback(flushPassiveEffect);
+      scheduleCallback(NormalSchedulerPriority, flushPassiveEffect);
     }
   }
 
@@ -127,6 +131,12 @@ function renderRootSync(root) {
 
   // 循环更新fiber
   workLoopSync();
+}
+function workLoopConcurrent() {
+  // 如果有下一个需要构建的fiber且时间片没有过期
+  while (workInProgress !== null && !shouldYield()) {
+    performUnitOfWork(workInProgress);
+  }
 }
 function workLoopSync() {
   // 只要是workInProgress存在就会一直处理这个fiber，处理完一个fiber workInProgress就会变成它的子fiber或者是sibling
